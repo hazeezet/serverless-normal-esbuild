@@ -1,0 +1,40 @@
+{
+	"name": "serverless-normal-esbuild",
+	"version": "1.0.0",
+	"description": "Build and package your app using normal configuration of typescript and esbuild. . . . just the way you will normally bundle your app without serverless 😊",
+	"main": "dist/index.js",
+	"scripts": {
+		"build": "tsc",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/hazeezet/serverless-normal-esbuild.git"
+	},
+	"keywords": [
+		"serverless",
+		"esbuild",
+		"webpack",
+		"serverless-offline"
+	],
+	"author": "hazeezet",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/hazeezet/serverless-normal-esbuild/issues"
+	},
+	"homepage": "https://github.com/hazeezet/serverless-normal-esbuild#readme",
+	"dependencies": {
+		"archiver": "^5.3.1",
+		"chokidar": "^3.5.3",
+		"copy-node-modules": "^1.0.4",
+		"fs-extra": "^11.1.0",
+		"ramda": "^0.28.0",
+		"shelljs": "^0.8.5"
+	},
+	"devDependencies": {
+		"@types/archiver": "^5.3.1",
+		"@types/fs-extra": "^9.0.13",
+		"@types/shelljs": "^0.8.11",
+		"ts-node": "^10.9.1"
+	}
+}
