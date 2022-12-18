@@ -70,6 +70,14 @@ class Normal_Build {
 			'after:package:createDeploymentArtifacts': async () => {
 				await this.cleanup()
 			},
+
+			'before:deploy:function:packageFunction': async () => {
+                this.SERVERLESS.classes.Error("Packaging of function is not available, You are welcome to contribute and support this")
+            },
+			
+            'before:invoke:local:invoke': async () => {
+				this.SERVERLESS.classes.Error("This is not available, You are welcome to contribute and support this")
+            },
 		};
 	}
 
