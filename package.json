@@ -1,11 +1,13 @@
 {
 	"name": "serverless-normal-esbuild",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Build and package your app using normal configuration of typescript and esbuild. . . . just the way you will normally bundle your app without serverless 😊",
 	"main": "dist/index.js",
+	"type": "module",
 	"scripts": {
 		"build": "tsc",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"prepare": "npm run build"
 	},
 	"repository": {
 		"type": "git",

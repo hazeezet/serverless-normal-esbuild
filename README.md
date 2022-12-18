@@ -4,6 +4,10 @@ Build and package your app using normal configuration of typescript and esbuild.
 
 It depends on [`etsc node`](https://github.com/a7ul/esbuild-node-tsc) and [`ts-node`](https://github.com/TypeStrong/ts-node)
 
+```bash
+npm i serverless-normal-esbuild -D
+```
+
 ## Features
 
 - Flexibility: Whatever you can do with typescript config and esbuild config you can do it here too
@@ -33,7 +37,13 @@ this work fine when bundling with normal esbuild and typescript but not with any
 
 ---
 
-`node_modules` is included as external by default, if you are using google provider which require no `node_modules` then you can ignore it.
+```yml
+plugins:
+    - serverless-normal-esbuild
+    ...
+```
+
+`node_modules` is included as external by default, if you are using `google provider` which require no `node_modules` then you can ignore it.
 
 ```yml
 custom:
