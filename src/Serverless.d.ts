@@ -18,7 +18,7 @@ declare namespace Serverless {
 
 			custom: {
 				"normal-esbuild"?: {
-					node_module?: boolean
+					node_modules?: boolean
 				}
 			}
 		}

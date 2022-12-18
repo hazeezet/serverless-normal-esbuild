@@ -16,7 +16,7 @@ const SERVERLESS_FOLDER = '.serverless';
 
 const DEFAULT_CONFIG: Serverless.Instance["service"]["custom"]["normal-esbuild"] = {
 		/** package node_module by default */
-		node_module: true
+		node_modules: true
 }
 
 class Normal_Build {
@@ -239,7 +239,7 @@ class Normal_Build {
 
 		if (!this.NO_ERROR) return;
 
-		if (this.CONFIG?.node_module === false) return;
+		if (this.CONFIG?.node_modules === false) return;
 
 		this.PROGRESS.update("packaging dependencies. . .");
 
