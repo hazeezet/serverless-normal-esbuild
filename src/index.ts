@@ -2,7 +2,7 @@
 
 import fse from 'fs-extra';
 import fs from "fs";
-import copyNodeModules from 'copy-node-modules';
+import copyNodeModules from '@bitc/copy-node-modules';
 import chokidar from "chokidar";
 import archiver from 'archiver';
 import path from 'path';
@@ -15,8 +15,8 @@ const { readJSONSync, pathExistsSync } = fse
 const SERVERLESS_FOLDER = '.serverless';
 
 const DEFAULT_CONFIG: Serverless.Instance["service"]["custom"]["normal-esbuild"] = {
-		/** package node_module by default */
-		node_modules: true
+	/** package node_module by default */
+	node_modules: true
 }
 
 class Normal_Build {
@@ -30,6 +30,7 @@ class Normal_Build {
 	private FILES_TO_WATCH: [];
 	private CONFIG: Serverless.Instance["service"]["custom"]["normal-esbuild"]
 	hooks: { [key: string]: Function }
+	PACKAGES: {};
 
 	constructor(serverless: Serverless.Instance, _option: Serverless.Options, { log, progress }: Serverless.Extra) {
 		this.LOG = log;
@@ -49,7 +50,7 @@ class Normal_Build {
 			'before:offline:start': async () => {
 				await this.checkTypes()
 				await this.compile()
-				await this.packages()
+				await this.packPackages()
 				await this.offline()
 				await this.watchAll()
 			},
@@ -57,13 +58,13 @@ class Normal_Build {
 			'before:run:run': async () => {
 				await this.checkTypes()
 				await this.compile()
-				await this.packages()
+				await this.packPackages()
 			},
 
 			'before:package:createDeploymentArtifacts': async () => {
 				await this.checkTypes()
 				await this.compile()
-				await this.packages()
+				await this.packPackages()
 				await this.zip();
 			},
 
@@ -72,12 +73,12 @@ class Normal_Build {
 			},
 
 			'before:deploy:function:packageFunction': async () => {
-                this.SERVERLESS.classes.Error("Packaging of function is not available, You are welcome to contribute and support this")
-            },
-			
-            'before:invoke:local:invoke': async () => {
+				this.SERVERLESS.classes.Error("Packaging of function is not available, You are welcome to contribute and support this")
+			},
+
+			'before:invoke:local:invoke': async () => {
 				this.SERVERLESS.classes.Error("This is not available, You are welcome to contribute and support this")
-            },
+			},
 		};
 	}
 
@@ -88,17 +89,25 @@ class Normal_Build {
 		this.PROGRESS.update("Getting information from tsconfig file");
 
 		const tsconfig_path = relative(this.SERVERLESS.config.servicePath, path.join("tsconfig.json"));
+		const package_path = relative(this.SERVERLESS.config.servicePath, path.join("package.json"));
 
-		if (pathExistsSync(tsconfig_path)) {
-			const tsconfig = readJSONSync(tsconfig_path);
-			this.BUILD_FOLDER = tsconfig.compilerOptions.outDir ?? "dist";
-			this.FILES_TO_WATCH = tsconfig.include ?? relative(this.SERVERLESS.config.servicePath, path.join("src/**/*.ts"));
+		if (!pathExistsSync(package_path)) {
+			this.PROGRESS.remove();
+			throw new this.SERVERLESS.classes.Error("package.json file could not be found in your root directory");
 		}
 
-		else {
+		if (!pathExistsSync(tsconfig_path)) {
 			this.PROGRESS.remove();
 			throw new this.SERVERLESS.classes.Error("tsconfig file could not be found in your root directory");
 		}
+
+
+		const tsconfig = readJSONSync(tsconfig_path);
+		const packages = readJSONSync(package_path);
+		this.PACKAGES = packages && packages.dependencies ? packages.dependencies : {};
+		this.BUILD_FOLDER = tsconfig.compilerOptions.outDir ?? "dist";
+		this.FILES_TO_WATCH = tsconfig.include ?? relative(this.SERVERLESS.config.servicePath, path.join("src/**/*.ts"));
+
 
 	}
 
@@ -235,7 +244,7 @@ class Normal_Build {
 	}
 
 	/** Package dev dependencies */
-	async packages() {
+	async packPackages() {
 
 		if (!this.NO_ERROR) return;
 
