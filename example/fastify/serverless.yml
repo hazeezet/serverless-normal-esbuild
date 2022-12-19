@@ -1,0 +1,34 @@
+org: your-org
+app: fastify-serverless
+service: fastify-serverless
+frameworkVersion: '3'
+
+provider:
+    name: aws
+    runtime: nodejs16.x
+
+    stage: ${opt:stage, 'dev'}
+    region: ${opt:region, 'us-east-1'}
+
+    tracing:
+        lambda: true
+        apiGateway: true
+
+# custom:
+#     normal-esbuild:
+#         node_module: false
+
+plugins:
+    - serverless-normal-esbuild
+    - serverless-offline
+    
+functions:
+    fastify:
+        handler: server.handler
+        events:
+            - httpApi:
+                path: /
+                method: get
+            - httpApi:
+                path: /example
+                method: get
