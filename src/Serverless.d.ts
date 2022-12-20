@@ -19,6 +19,7 @@ declare namespace Serverless {
 			custom: {
 				"normal-esbuild"?: {
 					node_modules?: boolean
+					packager?: string
 				}
 			}
 		}

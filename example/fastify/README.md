@@ -1,4 +1,4 @@
-# Getting Started with [Fastify-CLI](https://www.npmjs.com/package/fastify-cli)
+# Getting Started with `SERVERLESS` and [Fastify-CLI](https://www.npmjs.com/package/fastify-cli)
 This project was bootstrapped with Fastify-CLI.
 
 ## Available Scripts
@@ -14,9 +14,18 @@ Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
 For production mode
 
-### `npm run test`
+> make sure you change your org before running serverless command
+### `serverless offline`
 
-Run the test cases.
+To run in serverless development mode
+
+### `serverless package`
+
+To package your app or create an artifact of your app
+
+### `serverless deploy`
+
+To deploy to your server
 
 ## Learn More
 

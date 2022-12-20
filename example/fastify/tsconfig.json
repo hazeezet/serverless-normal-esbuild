@@ -13,5 +13,5 @@
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": "."
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/server.ts", "src/plugins/**/*.ts", "src/routes/**/*.ts"]
 }

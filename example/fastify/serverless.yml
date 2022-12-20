@@ -1,4 +1,4 @@
-org: your-org
+org: bringittocode
 app: fastify-serverless
 service: fastify-serverless
 frameworkVersion: '3'

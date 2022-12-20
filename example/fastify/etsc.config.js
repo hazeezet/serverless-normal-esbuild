@@ -1,11 +1,11 @@
-const fs = require('fs');
-const path = require('path');
 
 module.exports = {
 	// Supports all esbuild.build options
 	esbuild: {
-		minify: true,
+		minify: true, // compress if you wish
+		bundle: true, // Bundle your all imports into single file to reduce file size
 		target: "es2022",
+		external: ["fastify", "fastify-plugin"] // all this module are require by most folders so am adding it as external
 	},
 	// Prebuild hook
 	prebuild: async () => {
@@ -14,14 +14,5 @@ module.exports = {
 	// Postbuild hook
 	postbuild: async () => {
 		console.log("Am doing something after build");
-		const cpy = (await import("cpy")).default;
-		await cpy(
-			[
-				"package.json",
-				"package-lock.json",
-				"!src/**/*.{tsx,ts,js,jsx}", // Ignore already built files
-			],
-			"dist"
-		);
 	},
 };

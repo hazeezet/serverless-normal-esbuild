@@ -1,6 +1,6 @@
 {
 	"name": "serverless-normal-esbuild",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Build and package your app using normal configuration of typescript and esbuild. . . . just the way you will normally bundle your app without serverless 😊",
 	"main": "dist/index.js",
 	"type": "module",
@@ -26,7 +26,7 @@
 	},
 	"homepage": "https://github.com/hazeezet/serverless-normal-esbuild#readme",
 	"dependencies": {
-		"@bitc/copy-node-modules": "^1.0.0",
+		"@bitc/copy-node-modules": "^1.0.1",
 		"archiver": "^5.3.1",
 		"chokidar": "^3.5.3",
 		"fs-extra": "^11.1.0",

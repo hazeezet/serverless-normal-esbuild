@@ -8,6 +8,10 @@ It depends on [`etsc node`](https://github.com/a7ul/esbuild-node-tsc) and [`ts-n
 npm i serverless-normal-esbuild -D
 ```
 
+## Example
+
+- [`fastify`](https://github.com/hazeezet/serverless-normal-esbuild/tree/main/example/fastify) 
+
 ## Features
 
 - Flexibility: Whatever you can do with typescript config and esbuild config you can do it here too

@@ -2,6 +2,7 @@
 
 import fse from 'fs-extra';
 import fs from "fs";
+import url from "url";
 import copyNodeModules from '@bitc/copy-node-modules';
 import chokidar from "chokidar";
 import archiver from 'archiver';
@@ -10,13 +11,29 @@ import shelljs from "shelljs"
 import { relative } from 'path';
 import { assocPath } from 'ramda';
 
-const { readJSONSync, pathExistsSync } = fse
+type PackageJson = {
+	name: string;
+	version: string;
+	dependencies: { [dependency: string]: string };
+	scripts: { [scriptName: string]: string };
+};
+
+const { readJSONSync, pathExistsSync, writeJSONSync, copyFileSync } = fse
 
 const SERVERLESS_FOLDER = '.serverless';
 
-const DEFAULT_CONFIG: Serverless.Instance["service"]["custom"]["normal-esbuild"] = {
+const DEFAULT_NORMAL_ESBUILD_CONFIG: Serverless.Instance["service"]["custom"]["normal-esbuild"] = {
 	/** package node_module by default */
-	node_modules: true
+	node_modules: true,
+	/** package manager to use */
+	packager: "npm"
+}
+
+const DEFAULT_ETSC_CONFIG = {
+	/** don't compress imports into single file */
+	bundle: false,
+	/** external dependencies */
+	external: []
 }
 
 class Normal_Build {
@@ -28,9 +45,10 @@ class Normal_Build {
 	private WATCHING_FILES: boolean;
 	private BUILD_FOLDER: string;
 	private FILES_TO_WATCH: [];
+	private ETSC_CONFIG = DEFAULT_ETSC_CONFIG;
 	private CONFIG: Serverless.Instance["service"]["custom"]["normal-esbuild"]
 	hooks: { [key: string]: Function }
-	PACKAGES: {};
+	PACKAGES: PackageJson;
 
 	constructor(serverless: Serverless.Instance, _option: Serverless.Options, { log, progress }: Serverless.Extra) {
 		this.LOG = log;
@@ -38,14 +56,14 @@ class Normal_Build {
 		this.PROGRESS = progress.create({
 			message: 'Compiling with normal esbuild'
 		});
-
+		
 		this.NO_ERROR = true;
 		this.WATCHING_FILES = false;
 		this.SERVERLESS = serverless;
 
 		this.hooks = {
 
-			initialize: () => this.init(),
+			initialize: async () => await this.init(),
 
 			'before:offline:start': async () => {
 				await this.checkTypes()
@@ -82,14 +100,35 @@ class Normal_Build {
 		};
 	}
 
-	init() {
+	async init() {
 
-		this.CONFIG = this.SERVERLESS.service.custom && this.SERVERLESS.service.custom['normal-esbuild'] !== undefined ? this.SERVERLESS.service.custom['normal-esbuild'] : DEFAULT_CONFIG;
+		this.CONFIG = this.SERVERLESS.service.custom && this.SERVERLESS.service.custom['normal-esbuild'] !== undefined ? this.SERVERLESS.service.custom['normal-esbuild'] : DEFAULT_NORMAL_ESBUILD_CONFIG;
 
 		this.PROGRESS.update("Getting information from tsconfig file");
 
 		const tsconfig_path = relative(this.SERVERLESS.config.servicePath, path.join("tsconfig.json"));
 		const package_path = relative(this.SERVERLESS.config.servicePath, path.join("package.json"));
+
+
+		const esconfig_path = relative(this.SERVERLESS.config.servicePath, path.join("etsc.config.js"));
+
+		if (pathExistsSync(esconfig_path)) {
+			try {
+				const conf = path.resolve(process.cwd(), "etsc.config.js")
+				const configPathUrl = path.isAbsolute(conf) ? url.pathToFileURL(conf).toString() : conf;
+
+                const { default: esconfig } = await import(configPathUrl);
+                this.ETSC_CONFIG.bundle = esconfig && esconfig.esbuild ? esconfig.esbuild.bundle : false;
+                this.ETSC_CONFIG.external = esconfig && esconfig.esbuild ? esconfig.esbuild.external : [];
+            }
+            catch (e) {
+                this.LOG.error("etsc config file has some errors");
+                throw new this.SERVERLESS.classes.Error(e);
+            }
+		}
+		else {
+			this.LOG.warning("Using default config of etsc");
+		}
 
 		if (!pathExistsSync(package_path)) {
 			this.PROGRESS.remove();
@@ -104,11 +143,9 @@ class Normal_Build {
 
 		const tsconfig = readJSONSync(tsconfig_path);
 		const packages = readJSONSync(package_path);
-		this.PACKAGES = packages && packages.dependencies ? packages.dependencies : {};
+		this.PACKAGES = packages && packages.dependencies ? packages : {};
 		this.BUILD_FOLDER = tsconfig.compilerOptions.outDir ?? "dist";
 		this.FILES_TO_WATCH = tsconfig.include ?? relative(this.SERVERLESS.config.servicePath, path.join("src/**/*.ts"));
-
-
 	}
 
 	/** Check for errors in typescript files */
@@ -250,12 +287,28 @@ class Normal_Build {
 
 		if (this.CONFIG?.node_modules === false) return;
 
+		if (this.ETSC_CONFIG.bundle && this.ETSC_CONFIG.external.length == 0) return;
+
 		this.PROGRESS.update("packaging dependencies. . .");
 
 		return new Promise((resolve, reject) => {
+			let package_path: string;
+
+            if ((this.ETSC_CONFIG.bundle) && (this.ETSC_CONFIG.external.length > 0)) {
+                handleExternal(this.PACKAGES, this.ETSC_CONFIG.external, this.BUILD_FOLDER, this.CONFIG.packager);
+                package_path = this.BUILD_FOLDER;
+            }
+			else{
+				copyPackageJson(this.BUILD_FOLDER);
+
+				//TODO:
+				// copyPackageLockFile(this.BUILD_FOLDER, this.CONFIG.packager);
+			}
+
 			const srcDir = process.cwd();
-			copyNodeModules(srcDir, this.BUILD_FOLDER, { devDependencies: false }, (err, _results) => {
-				if (err) {
+
+            copyNodeModules(srcDir, this.BUILD_FOLDER, { devDependencies: false, packagePath: package_path }, (err, _results) => {
+                if (err) {
 					if (this.WATCHING_FILES) {
 						this.LOG.error("An error occured during dependency packaging");
 						this.LOG.verbose(err);
@@ -269,9 +322,63 @@ class Normal_Build {
 				this.LOG.success("Compiled successful")
 				return resolve(true);
 			});
-
 		});
 
+		/** Filter the package.json such that it will only include the external dependencies that is defined
+		 * and then create it in the build folder
+		 */
+		function handleExternal(packages: PackageJson, external: string[], dest: string, packager: string) {
+			let new_dependencies = {};
+			for (const dependency of external) {
+				if (dependency in packages.dependencies) {
+					new_dependencies[dependency] = packages.dependencies[dependency];
+				}
+			}
+			// Update the dependencies in the package.json file
+			const updatedPackageJson = Object.assign(packages, { dependencies: new_dependencies });
+			writeJSONSync(path.join(dest,"package.json"), updatedPackageJson, { spaces: 2 });
+			
+			//TODO:
+			// copyPackageLockFile(dest,packager)
+		}
+
+		function copyPackageJson(dest: string){
+			const src = path.resolve(process.cwd(), "package.json")
+			const srcUrl = path.isAbsolute(src) ? url.pathToFileURL(src).toString() : src;
+			copyFileSync(srcUrl, path.join(dest,"package.json"))
+		}
+
+		//TODO:
+		// function copyPackageLockFile(dest: string, packager: string){
+		// 	let packager_file_path: string;
+		// 	let packager_file_name: string;
+
+		// 	if(packager == "npm"){
+		// 		packager_file_name = "package-lock.json"
+		// 		packager_file_path = path.resolve(process.cwd(), packager_file_name)
+		// 	}
+
+		// 	if(packager == "pnpm"){
+		// 		packager_file_name = "pnpm-lock.yaml"
+		// 		packager_file_path = path.resolve(process.cwd(), packager_file_name)
+		// 	}
+			
+		// 	if(packager == "yarn"){
+		// 		packager_file_name = "yarn.lock"
+		// 		packager_file_path = path.resolve(process.cwd(), packager_file_name)
+		// 	}
+
+		// 	const srcUrl = path.isAbsolute(packager_file_path) ? url.pathToFileURL(packager_file_path).toString() : packager_file_path;
+		// 	const dest_path = path.join(path.resolve(process.cwd(), dest), packager_file_name);
+		// 	const dest_url = path.isAbsolute(dest_path) ? url.pathToFileURL(dest_path).toString() : dest_path;
+            
+		// 	copyFileSync(srcUrl, dest_url);
+
+		// 	shelljs.cd(dest_path);
+		// 	shelljs.exec(packager.toLocaleLowerCase() + " prune");
+		// 	shelljs.cd();
+
+		// }
 	}
 }
 

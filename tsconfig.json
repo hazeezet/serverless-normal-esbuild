@@ -6,7 +6,8 @@
 		"outDir": "dist",
 		"sourceMap": false,
 		"esModuleInterop": true,
-		"moduleResolution": "node"
+		"moduleResolution": "node",
+		"removeComments": true
 	},
 	"exclude": [
 		"node_modules"
